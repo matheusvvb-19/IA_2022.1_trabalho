@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-def k_means(dataset: typing.TextIO, k: int, it: int):
+def k_means(dataset: str, k: int, it: int):
     """ Algoritmo K-Médias
         args:
         dataset -- arquivo contento o conjunto de dados
@@ -23,7 +23,8 @@ def k_means(dataset: typing.TextIO, k: int, it: int):
         while True:
             ponto = ()
             for intervalo in rangeValuesPerAttribute:
-                ponto += (random.randint(intervalo[0], intervalo[1]), )
+                #ponto += (random.randint(intervalo[0], intervalo[1]), )
+                ponto += (random.uniform(intervalo[0], intervalo[1]), )
 
             if ponto not in centroids:
                 break
@@ -96,12 +97,61 @@ def k_means(dataset: typing.TextIO, k: int, it: int):
                     selectedObjValues[index] = tuple(m)
 
                 centroids[c] = recalculate_centroid(selectedObjValues)
+    # esqueleto da tabela de distância euclidiana entre cada objeto e os centróides/clusters:
+    distanceTable = {
+        'object': [],
+    }
 
-    dfPartition.to_csv('./output/kmeans.clu', sep='\t', index=False)
+    partition = {
+        'object': [],
+        'cluster': []
+    }
+
+    # adicionando uma nova coluna à tabela de distância euclidiana para cada cluster existente:
+    for j in range(k):
+        distanceTable.update({'c%d' % j: []})
+
+    # convertendo dataset em uma lista de listas, onde cada elemento contém todas as informações sobre determinado objeto:
+    listOfObjects = df.to_numpy().tolist()
+
+    # percorrendo a lista de objetos:
+    for object in listOfObjects:
+        distanceTable['object'].append(object[0])
+
+        objectPoint = tuple(object[1:])
+
+        # calcular a distância euclidiana entre o objeto e cada um dos centróides existentes:
+        for index, c in enumerate(centroids):
+            euclidianDistance = euclidean_dist(objectPoint, c)
+            distanceTable['c%d' % index].append(euclidianDistance)
+
+    dfDistances = pd.DataFrame(distanceTable)
+
+    # reagrupar os objetos, associando eles aos clusters mais próximos:
+    listOfDistances = dfDistances.to_numpy().tolist()
+
+    # para cada linha da tabela de distâncias euclidianas, selecionar a menor distância e associar o objeto ao determinado cluster:
+    for dist in listOfDistances:
+        minorDistIndex = np.where(dist[1:] == np.amin(dist[1:]))[0]
+
+        # se houver mais de uma distância com o menor valor, é feita uma escolha aletória entre elas:
+        if len(minorDistIndex) > 1:
+            minorDistIndex = random.choice(minorDistIndex)
+        
+        else:
+            minorDistIndex = minorDistIndex[0]
+
+        # preenchendo o dicionário de partição:
+        partition['object'].append(dist[0])
+        partition['cluster'].append(minorDistIndex)
+
+    # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
+    dfPartition = pd.DataFrame(partition)
+
+    dfPartition.to_csv(f'../output/kmeans_%s.clu' % dataset.split('/')[-1][0:-4], sep='\t', index=False)
 
 
-
-def single_link(dataset: typing.TextIO, k_min: int, k_max: int):
+def single_link(dataset: str, k_min: int, k_max: int):
     """ Algoritmo Single-Link
         args:
         dataset -- arquivo contento o conjunto de dados
@@ -109,10 +159,38 @@ def single_link(dataset: typing.TextIO, k_min: int, k_max: int):
         k_max -- número final do intervalo do número de clusters
     """
 
-    pass
+    # FEITO ATÉ AGORA: tabela inicial de distâncias, com as distâncias euclidianas entre todos os objetos inidividualmente
 
+    df = pd.read_csv(dataset, sep="\t", header=0)
+    objectsNames = df['sample_label'].tolist() # ['Homer', 'Marge', 'Bart', ....]
 
-def complete_link(dataset: typing.TextIO, k_min: int, k_max: int):
+    distanceTable = {}
+
+    for j in objectsNames:
+        distanceTable.update({j: []})
+
+    listOfObjects = df.to_numpy().tolist()
+
+    for index_i, i in enumerate(listOfObjects):
+        for index_j, j in enumerate(listOfObjects):
+            # preencher com -1:
+            if index_i > index_j:
+                distance = -1
+            
+            elif index_i == index_j:
+                distance = 0
+            
+            else:
+                distance = euclidean_dist(tuple(i[1:]), tuple(j[1:]))
+            
+            distanceTable[i[0]].append(distance)
+
+    dfDistances = pd.DataFrame(distanceTable, index=objectsNames)
+
+    #for i in range(k_min, k_max):
+    
+
+def complete_link(dataset: str, k_min: int, k_max: int):
     """ Algoritmo Complete-Link
         args:
         dataset -- arquivo contento o conjunto de dados
@@ -123,9 +201,6 @@ def complete_link(dataset: typing.TextIO, k_min: int, k_max: int):
     pass
 
 def euclidean_dist(point1, point2):
-    """ Euclidean distance between point & data.
-        Point has dimensions (m,), data has dimensions (n,m), and output will be of size (n,).
-    """
     sum = 0
     for p, c in zip(point1, point2):
         sum += (p - c)**2
