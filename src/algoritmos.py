@@ -1,6 +1,7 @@
 import typing, random, math
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 
 def k_means(dataset: str, k: int, it: int):
@@ -11,13 +12,16 @@ def k_means(dataset: str, k: int, it: int):
         it -- número de iterações desejado
     """
 
+    # lendo objetos de entrada:
     df = pd.read_csv(dataset, sep="\t", header=0)
 
+    # criando uma lista formada por tuplas, onde cada tupla apresenta o menor e o maior valor para a respectiva coluna de dados no dataset original:
     rangeValuesPerAttribute = []
     for col in df.columns[1:]:
         intervalo = df[col].agg(['min', 'max'])
         rangeValuesPerAttribute.append(intervalo)
 
+    # calculando centróides aleatórios iniciais:
     centroids = []
     for i in range(k):
         while True:
@@ -148,10 +152,11 @@ def k_means(dataset: str, k: int, it: int):
     # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
     dfPartition = pd.DataFrame(partition)
 
+    Path(f'../output/').mkdir(parents=True, exist_ok=True)
     dfPartition.to_csv(f'../output/kmeans_%s.clu' % dataset.split('/')[-1][0:-4], sep='\t', index=False)
 
 
-def single_link(dataset: str, k_min: int, k_max: int):
+def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
     """ Algoritmo Single-Link
         args:
         dataset -- arquivo contento o conjunto de dados
@@ -159,65 +164,226 @@ def single_link(dataset: str, k_min: int, k_max: int):
         k_max -- número final do intervalo do número de clusters
     """
 
-    # FEITO ATÉ AGORA: tabela inicial de distâncias, com as distâncias euclidianas entre todos os objetos inidividualmente
+    if strategy == 'single-link':
+        targetFolder = '../output/single_link/'
+        file = 'single'
+    
+    elif strategy == 'complete-link':
+        targetFolder = '../output/complete_link/'
+        file = 'complete'
 
-    df = pd.read_csv(dataset, sep="\t", header=0)
-    objectsNames = df['sample_label'].tolist() # ['Homer', 'Marge', 'Bart', ....]
+    # lendo arquivo de dados:
+    df = pd.read_csv(dataset, sep="\t", header=0) # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
 
+    # criando pasta de saída do algoritmo e já escrevendo a partição para primeiro corte do dendograma (K = n° de objetos):
+    Path(targetFolder).mkdir(parents=True, exist_ok=True)
+
+    # tabela de distâncias euclidianas entre os objetos inicias do conjunto de dados:
+    dfDistances, listOfObjects = initial_distances_between_objects(df)
+    
+    # somente se o parâmetro k_max for igual à quantidade de objetos do dataset é que se deverá criar o arquivo para esta partição inicial:
+    # nesta partição inicial, cada cluster é composto por apenas um objeto
+    if k_max == len(df.index):
+        partition = {
+            'object': [],
+            'cluster': []
+        }
+
+        i = 0
+        # percorrendo as colunas da tabela inicial de distâncias, atrelando um número de cluster diferente a cada objeto:
+        columns = dfDistances.columns.values.tolist()
+        for col in columns:
+            partition['object'].append(col)
+            partition['cluster'].append(i)
+            i += 1    
+
+        # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
+        dfPartition = pd.DataFrame(partition)
+        dfPartition.to_csv(targetFolder + file +'_%s_%d.clu' % (dataset.split('/')[-1][0:-4], len(df.index)), sep='\t', index=False) 
+
+    # iteração principal do algoritmo:
+    numObjs = len(df.index)
+    for it in range(numObjs, k_min-1, -1):
+        if it != 1:
+            # variável dicionário que armazena a menor distância da tabela de distâncias euclidianas, assim como os nomes dos objetos que compõem essa menor distância:
+            minValue = {
+                'distance': -1,
+                'object1': '',
+                'object2': '',
+            }
+
+            # encontrando a menor distância na tabela de distâncias:
+            for i in listOfObjects:
+                for j in listOfObjects:
+                    if dfDistances[i[0]][j[0]] > 0 and (minValue['distance'] == -1 or dfDistances[i[0]][j[0]] < minValue['distance']):
+                        minValue['distance'] = dfDistances[i[0]][j[0]]
+                        minValue['object1'] = i[0]
+                        minValue['object2'] = j[0]
+
+            # dicionário que armazenará dados da nova coluna e linha a ser adicionada à tabela de distâncias:
+            newCluster = {
+                'name': '',
+                'distances': [0],
+            }
+
+            # nome do novo objeto:
+            newCluster['name'] = minValue['object1'] + '_' + minValue['object2']
+
+            # percorrendo a tabela de distâncias e selecionando as menores distâncias para os objetos que foram unidos:
+            columns = dfDistances.columns.values.tolist()
+            for col in columns:
+                # pular colunas com nomes object1 e object2, ou seja, dos objetos que foram unidos:
+                if col != minValue['object1'] and col != minValue['object2']:
+                    if dfDistances[col][minValue['object1']] != 0:
+                        if strategy == 'single-link':
+                            aux = min(dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
+
+                        elif strategy == 'complete-link':
+                            aux = max(dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
+
+                        # registrando a menor distância no dicionário criado:
+                        newCluster['distances'].append(aux)
+
+            # dropando colunas e linhas dos objetos que foram unidos:
+            dfDistances.drop(columns=[minValue['object1'], minValue['object2']], inplace=True)
+            dfDistances.drop([minValue['object1'], minValue['object2']], axis=0, inplace=True)
+
+            # inserindo nova coluna e linha de distâncias para o novo cluster (objetos unidos):
+            dfDistances.insert(0, newCluster['name'], newCluster['distances'][1:], True)
+            data = []
+            data.insert(0, pd.Series(newCluster['distances'], index=dfDistances.columns))
+            dfDistances = pd.concat([pd.DataFrame(data, index=[newCluster['name']]), dfDistances])
+
+            # atualizando a lista de objetos após a união dos objetos mais próximos:
+            listOfObjects = [x for x in listOfObjects if x[0] not in [minValue['object1'], minValue['object2']]]    # removendo objetos unidos
+            listOfObjects.insert(0, [newCluster['name']])                                                           # inserindo novo objeto resltado da união
+
+            # caso a esteja no intervalo desejado - corte no dendograma:
+            if it >= k_min-1 and it <= k_max:
+                write_link_partition(dataset, dfDistances, it, targetFolder, file)
+
+        else:
+            partition = {
+                'object': [],
+                'cluster': []
+            }
+
+            # percorrendo as colunas da tabela inicial de distâncias, atrelando um número de cluster diferente a cada objeto:
+            columns = dfDistances.columns.values.tolist()
+            for col in columns:
+                objs = col.split('_')
+                for obj in objs:
+                    partition['object'].append(obj)
+                    partition['cluster'].append(0)
+
+            # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
+            dfPartition = pd.DataFrame(partition)
+            dfPartition.to_csv(targetFolder + file +'_%s_%d.clu' % (dataset.split('/')[-1][0:-4], 1), sep='\t', index=False) 
+
+def write_link_partition(dataset: str, dfDistances: pd.DataFrame, it: int, targetFolder: str, file: str):
+    """ Escreve a partição para um determinado corte do dendograma gerado pelos algoritmos hierárquicos.
+        args:
+        dataset -- nome do conjunto de dados, utilizadopara salvamento do arquivo de saída.
+        dfDistances -- tabela de distância euclidiana entre os objetos/clusters da particão atual.
+        it -- número de clusters do corte atual.
+    
+    """
+    partition = {
+        'object': [],
+        'cluster': []
+    }
+
+    i = 0
+    # percorrendo as colunas da tabela de distâncias:
+    columns = dfDistances.columns.values.tolist()
+    for col in columns:
+        # extraindo nomes de objetos individuais, caso haja uniões:
+        objs = col.split('_')
+        for obj in objs:
+            partition['object'].append(obj)
+
+            # se o corte do dendograma for 1, significa que só há 1 cluster e todos os objetos pertencem a ele, por tanto, o número do cluster será zero para todos:
+            if it == 1:
+                partition['cluster'].append(0)
+            
+            # se não, escreve-se um novo cluster no arquivo de saída:
+            else:
+                partition['cluster'].append(i)
+        
+        i += 1    
+
+    # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
+    dfPartition = pd.DataFrame(partition)
+    dfPartition.to_csv(targetFolder + file + '_%s_%d.clu' % (dataset.split('/')[-1][0:-4], it-1), sep='\t', index=False) 
+
+
+def initial_distances_between_objects(df: pd.DataFrame):
+    """ Calcula a distância euclidiana entre todos os objetos (individualmente) do conjunto de dados
+        args:
+        df -- tabela de conjuntos de dados, lida a partir de arquivo
+    
+    """
+    # lista de nomes dos objetos:
+    objectsNames = df['sample_label'].tolist()
+
+    # dicionário que será transformado na tabela de distâncias euclidianas:
     distanceTable = {}
-
     for j in objectsNames:
         distanceTable.update({j: []})
 
+    # iterando os objetos do dataset e preenchendo a tabela de distâncias (NxN):
     listOfObjects = df.to_numpy().tolist()
-
     for index_i, i in enumerate(listOfObjects):
         for index_j, j in enumerate(listOfObjects):
-            # preencher com -1:
-            if index_i > index_j:
-                distance = -1
-            
-            elif index_i == index_j:
+            # diagonal principal:
+            if index_i == index_j:
                 distance = 0
             
+            # demais céulas da tabela:
             else:
                 distance = euclidean_dist(tuple(i[1:]), tuple(j[1:]))
             
             distanceTable[i[0]].append(distance)
 
-    dfDistances = pd.DataFrame(distanceTable, index=objectsNames)
+    return pd.DataFrame(distanceTable, index=objectsNames), listOfObjects
 
-    #for i in range(k_min, k_max):
-    
 
-def complete_link(dataset: str, k_min: int, k_max: int):
-    """ Algoritmo Complete-Link
+def euclidean_dist(point1: tuple, point2: tuple):
+    """ Calcula a distância euclidiana entre duas tuplas de N dimensões.
         args:
-        dataset -- arquivo contento o conjunto de dados
-        k_min -- número inicial do intervalo do número de clusters
-        k_max -- número final do intervalo do número de clusters
+        point1 -- tupla origem
+        point2 -- tupla destino
     """
 
-    pass
-
-def euclidean_dist(point1, point2):
     sum = 0
+    # itera sobre os elementos de ambas as tuplas, calculando o quadrado da diferença entre eles:
     for p, c in zip(point1, point2):
         sum += (p - c)**2
 
     return math.sqrt(sum)
 
 def recalculate_centroid(objs: list):
+    """ Recalcula o centróide de um cluster a partir dos objetos que o compõem.
+        args:
+        objs -- lista de objetos que compõem o cluster. O centróide será a média de cada um de seus atributos.
+    
+    """
+
+    # número de dimensões (coordenadas, atributos) dos objetos na lista:
     numberDimensions = len(objs[0])
+
+    # criando novo centróide preenchido por zeros:
     sum = []
     for i in range(numberDimensions):
         sum.append(0)
 
+    # somando os atributos de cada objeto presente na lista:
     for obj in objs:
         for i in range(numberDimensions):
             sum[i] += obj[i]
 
+    # calculando a média para cada atributo, após todas as somas:
     for index, s in enumerate(sum):
         sum[index] = s/len(objs)
 
-    return tuple(sum)
+    return tuple(sum)   # retornando resultado na forma de tupla
