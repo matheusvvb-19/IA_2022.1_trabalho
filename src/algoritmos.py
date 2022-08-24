@@ -7,7 +7,7 @@ from pathlib import Path
 def k_means(dataset: str, k: int, it: int):
     """ Algoritmo K-Médias
         args:
-        dataset -- arquivo contento o conjunto de dados
+        dataset -- arquivo contendo o conjunto de dados
         k -- número de clusters desejado
         it -- número de iterações desejado
     """
@@ -159,7 +159,7 @@ def k_means(dataset: str, k: int, it: int):
 def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
     """ Algoritmo Single-Link
         args:
-        dataset -- arquivo contento o conjunto de dados
+        dataset -- arquivo contendo o conjunto de dados
         k_min -- número inicial do intervalo do número de clusters
         k_max -- número final do intervalo do número de clusters
     """
