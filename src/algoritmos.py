@@ -2,6 +2,7 @@ import typing, random, math
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 def k_means(dataset: str, k: int, it: int):
@@ -27,7 +28,6 @@ def k_means(dataset: str, k: int, it: int):
         while True:
             ponto = ()
             for intervalo in rangeValuesPerAttribute:
-                #ponto += (random.randint(intervalo[0], intervalo[1]), )
                 ponto += (random.uniform(intervalo[0], intervalo[1]), )
 
             if ponto not in centroids:
@@ -101,6 +101,7 @@ def k_means(dataset: str, k: int, it: int):
                     selectedObjValues[index] = tuple(m)
 
                 centroids[c] = recalculate_centroid(selectedObjValues)
+
     # esqueleto da tabela de distância euclidiana entre cada objeto e os centróides/clusters:
     distanceTable = {
         'object': [],
@@ -173,7 +174,7 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
         file = 'complete'
 
     # lendo arquivo de dados:
-    df = pd.read_csv(dataset, sep="\t", header=0) # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
+    df = pd.read_csv(dataset, sep=",", header=0) # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
 
     # criando pasta de saída do algoritmo e já escrevendo a partição para primeiro corte do dendograma (K = n° de objetos):
     Path(targetFolder).mkdir(parents=True, exist_ok=True)
@@ -387,3 +388,76 @@ def recalculate_centroid(objs: list):
         sum[index] = s/len(objs)
 
     return tuple(sum)   # retornando resultado na forma de tupla
+
+def plot_partition(partition: str, dataset: str):
+    """ Plota os dados divididos em clusters. Pode receber a partição real ou a partição obtida pelos algoritmos implementados.
+        args:
+        partition -- nome do arquivo com a partição
+        dataset -- nome do arquivo com os dados (atributos) dos objetos
+    """
+
+    # lendo partição (divisão dos objetos em cluster):
+    # se a partição passada for a real, é preciso renomear suas colunas:
+    if 'Real' in partition:
+        partitionDf = pd.read_csv(partition, sep="\t", header=None)
+        partitionDf.set_axis(['object', 'cluster'], axis=1, inplace=True)
+
+    # se não, basta ler o arquivo e os nomes das colunas já estarão nele:
+    else:
+        partitionDf = pd.read_csv(partition, sep="\t", header=0) 
+
+    # lendo objetos de entrada:
+    df = pd.read_csv(dataset, sep="\t", header=0)
+
+    # plotando gráfico:
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    # eixos e clusters:
+    try:
+        x = df['d1'].to_numpy().tolist()
+        plt.xlabel('d1') 
+    
+    except KeyError:
+        x = df['D1'].to_numpy().tolist()
+        plt.xlabel('D1') 
+
+    try:
+        y = df['d2'].to_numpy().tolist()
+        plt.ylabel('d2') 
+    
+    except:
+        y = df['D2'].to_numpy().tolist()
+        plt.ylabel('D2') 
+    
+    clusters = partitionDf['cluster'].to_numpy().tolist()
+    scatter = ax.scatter(x, y, c=clusters, s=50)
+
+    # definindo o título do gráfico:
+    if 'Real' in partition:
+        titleName = 'Base de dados: {}\nClusters: {}'.format(partition.split('/')[2].split('Real')[0], len(set(clusters)))
+    
+    else:
+        """formatos: 
+                '../output/single_link/single_<entrada>_<numClusters>.clu'
+                '../output/complete_link_complete_<entrada>_<numClusters>.clu'
+        """
+        if 'kmeans' in partition:
+            algoritmo = 'K-Médias'
+            dados = partition.split('_')[1][0:-4]
+            numClusters = len(set(clusters))
+        
+        else:
+            if 'single' in partition:
+                algoritmo = 'Single-Link'
+        
+            else:
+                algoritmo = 'Complete-Link'
+            
+            dados = partition.split('/')[3].split('_')[1]
+            numClusters = partition.split('/')[3].split('_')[2][0:-4]
+
+        titleName = '{}\n{} - {} clusters'.format(algoritmo, dados, numClusters)
+
+    plt.title(titleName)
+    plt.show()
