@@ -490,7 +490,7 @@ def plot_partition(partition: str, dataset: str):
 
 
 def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
-    dfReal = pd.read_csv(realPartitionPath, sep="\t", header=0)
+    dfReal = pd.read_csv(realPartitionPath, sep="\t")
 
     # Armazena a divisão dos objetos nos cluster da partição real
     realPartition = []
