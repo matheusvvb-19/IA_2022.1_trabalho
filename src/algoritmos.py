@@ -181,7 +181,7 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
 
     # lendo arquivo de dados:
     # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
-    df = pd.read_csv(dataset, sep=",", header=0)
+    df = pd.read_csv(dataset, sep="\t", header=0)
 
     # criando pasta de saída do algoritmo e já escrevendo a partição para primeiro corte do dendograma (K = n° de objetos):
     Path(targetFolder).mkdir(parents=True, exist_ok=True)
@@ -495,6 +495,14 @@ def plot_partition(partition: str, dataset: str):
 
 
 def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
+    """ Retorna o Índice de Rand Ajustado para determinada partição obtida, em detrimento da partição real já conhecida.
+        args:
+        realPartitionPath: caminho para o arquivo que contém a partição real do conjunto de dados, está na pasta datasets;
+        testPartitionPath: caminho para o arquivo que contém a partição gerada pelos nossos algoritmos, está na pasta output.
+    
+    """
+
+    # lendo o conjunto de dados de entrada:
     dfReal = pd.read_csv(realPartitionPath, sep="\t")
 
     # Armazena a divisão dos objetos nos cluster da partição real
