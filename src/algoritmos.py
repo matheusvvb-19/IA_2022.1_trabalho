@@ -1,4 +1,6 @@
-import typing, random, math
+import typing
+import random
+import math
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -32,7 +34,7 @@ def k_means(dataset: str, k: int, it: int):
 
             if ponto not in centroids:
                 break
-            
+
         centroids.append(ponto)
 
     # iterações do algoritmo:
@@ -77,7 +79,7 @@ def k_means(dataset: str, k: int, it: int):
             # se houver mais de uma distância com o menor valor, é feita uma escolha aletória entre elas:
             if len(minorDistIndex) > 1:
                 minorDistIndex = random.choice(minorDistIndex)
-            
+
             else:
                 minorDistIndex = minorDistIndex[0]
 
@@ -94,8 +96,10 @@ def k_means(dataset: str, k: int, it: int):
             selectedObjNames = selectedObjNames['object'].to_numpy().tolist()
 
             if len(selectedObjNames) > 0:
-                selectedObjValues = df.loc[df['sample_label'].isin(selectedObjNames)]
-                selectedObjValues = selectedObjValues.drop(columns=['sample_label'])
+                selectedObjValues = df.loc[df['sample_label'].isin(
+                    selectedObjNames)]
+                selectedObjValues = selectedObjValues.drop(
+                    columns=['sample_label'])
                 selectedObjValues = selectedObjValues.to_numpy().tolist()
                 for index, m in enumerate(selectedObjValues):
                     selectedObjValues[index] = tuple(m)
@@ -142,7 +146,7 @@ def k_means(dataset: str, k: int, it: int):
         # se houver mais de uma distância com o menor valor, é feita uma escolha aletória entre elas:
         if len(minorDistIndex) > 1:
             minorDistIndex = random.choice(minorDistIndex)
-        
+
         else:
             minorDistIndex = minorDistIndex[0]
 
@@ -154,7 +158,8 @@ def k_means(dataset: str, k: int, it: int):
     dfPartition = pd.DataFrame(partition)
 
     Path(f'../output/').mkdir(parents=True, exist_ok=True)
-    dfPartition.to_csv(f'../output/kmeans_%s.clu' % dataset.split('/')[-1][0:-4], sep='\t', index=False)
+    dfPartition.to_csv(f'../output/kmeans_%s.clu' %
+                       dataset.split('/')[-1][0:-4], sep='\t', index=False)
 
 
 def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
@@ -168,20 +173,21 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
     if strategy == 'single-link':
         targetFolder = '../output/single_link/'
         file = 'single'
-    
+
     elif strategy == 'complete-link':
         targetFolder = '../output/complete_link/'
         file = 'complete'
 
     # lendo arquivo de dados:
-    df = pd.read_csv(dataset, sep=",", header=0) # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
+    # MUDAR sep=',' QUANDO FOR TESTAR ENTRADA TEST.TXT
+    df = pd.read_csv(dataset, sep=",", header=0)
 
     # criando pasta de saída do algoritmo e já escrevendo a partição para primeiro corte do dendograma (K = n° de objetos):
     Path(targetFolder).mkdir(parents=True, exist_ok=True)
 
     # tabela de distâncias euclidianas entre os objetos inicias do conjunto de dados:
     dfDistances, listOfObjects = initial_distances_between_objects(df)
-    
+
     # somente se o parâmetro k_max for igual à quantidade de objetos do dataset é que se deverá criar o arquivo para esta partição inicial:
     # nesta partição inicial, cada cluster é composto por apenas um objeto
     if k_max == len(df.index):
@@ -196,11 +202,12 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
         for col in columns:
             partition['object'].append(col)
             partition['cluster'].append(i)
-            i += 1    
+            i += 1
 
         # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
         dfPartition = pd.DataFrame(partition)
-        dfPartition.to_csv(targetFolder + file +'_%s_%d.clu' % (dataset.split('/')[-1][0:-4], len(df.index)), sep='\t', index=False) 
+        dfPartition.to_csv(targetFolder + file + '_%s_%d.clu' %
+                           (dataset.split('/')[-1][0:-4], len(df.index)), sep='\t', index=False)
 
     # iteração principal do algoritmo:
     numObjs = len(df.index)
@@ -228,7 +235,8 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
             }
 
             # nome do novo objeto:
-            newCluster['name'] = minValue['object1'] + '_' + minValue['object2']
+            newCluster['name'] = minValue['object1'] + \
+                '_' + minValue['object2']
 
             # percorrendo a tabela de distâncias e selecionando as menores distâncias para os objetos que foram unidos:
             columns = dfDistances.columns.values.tolist()
@@ -237,31 +245,41 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
                 if col != minValue['object1'] and col != minValue['object2']:
                     if dfDistances[col][minValue['object1']] != 0:
                         if strategy == 'single-link':
-                            aux = min(dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
+                            aux = min(
+                                dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
 
                         elif strategy == 'complete-link':
-                            aux = max(dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
+                            aux = max(
+                                dfDistances[col][minValue['object1']], dfDistances[col][minValue['object2']])
 
                         # registrando a menor distância no dicionário criado:
                         newCluster['distances'].append(aux)
 
             # dropando colunas e linhas dos objetos que foram unidos:
-            dfDistances.drop(columns=[minValue['object1'], minValue['object2']], inplace=True)
-            dfDistances.drop([minValue['object1'], minValue['object2']], axis=0, inplace=True)
+            dfDistances.drop(
+                columns=[minValue['object1'], minValue['object2']], inplace=True)
+            dfDistances.drop(
+                [minValue['object1'], minValue['object2']], axis=0, inplace=True)
 
             # inserindo nova coluna e linha de distâncias para o novo cluster (objetos unidos):
-            dfDistances.insert(0, newCluster['name'], newCluster['distances'][1:], True)
+            dfDistances.insert(
+                0, newCluster['name'], newCluster['distances'][1:], True)
             data = []
-            data.insert(0, pd.Series(newCluster['distances'], index=dfDistances.columns))
-            dfDistances = pd.concat([pd.DataFrame(data, index=[newCluster['name']]), dfDistances])
+            data.insert(0, pd.Series(
+                newCluster['distances'], index=dfDistances.columns))
+            dfDistances = pd.concat(
+                [pd.DataFrame(data, index=[newCluster['name']]), dfDistances])
 
             # atualizando a lista de objetos após a união dos objetos mais próximos:
-            listOfObjects = [x for x in listOfObjects if x[0] not in [minValue['object1'], minValue['object2']]]    # removendo objetos unidos
-            listOfObjects.insert(0, [newCluster['name']])                                                           # inserindo novo objeto resltado da união
+            listOfObjects = [x for x in listOfObjects if x[0] not in [
+                minValue['object1'], minValue['object2']]]    # removendo objetos unidos
+            # inserindo novo objeto resltado da união
+            listOfObjects.insert(0, [newCluster['name']])
 
             # caso a esteja no intervalo desejado - corte no dendograma:
-            if it >= k_min-1 and it <= k_max:
-                write_link_partition(dataset, dfDistances, it, targetFolder, file)
+            if it >= k_min + 1 and it <= k_max + 1:
+                write_link_partition(dataset, dfDistances,
+                                     it, targetFolder, file)
 
         else:
             partition = {
@@ -279,7 +297,9 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
 
             # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
             dfPartition = pd.DataFrame(partition)
-            dfPartition.to_csv(targetFolder + file +'_%s_%d.clu' % (dataset.split('/')[-1][0:-4], 1), sep='\t', index=False) 
+            dfPartition.to_csv(targetFolder + file + '_%s_%d.clu' %
+                               (dataset.split('/')[-1][0:-4], 1), sep='\t', index=False)
+
 
 def write_link_partition(dataset: str, dfDistances: pd.DataFrame, it: int, targetFolder: str, file: str):
     """ Escreve a partição para um determinado corte do dendograma gerado pelos algoritmos hierárquicos.
@@ -287,7 +307,7 @@ def write_link_partition(dataset: str, dfDistances: pd.DataFrame, it: int, targe
         dataset -- nome do conjunto de dados, utilizadopara salvamento do arquivo de saída.
         dfDistances -- tabela de distância euclidiana entre os objetos/clusters da particão atual.
         it -- número de clusters do corte atual.
-    
+
     """
     partition = {
         'object': [],
@@ -306,23 +326,24 @@ def write_link_partition(dataset: str, dfDistances: pd.DataFrame, it: int, targe
             # se o corte do dendograma for 1, significa que só há 1 cluster e todos os objetos pertencem a ele, por tanto, o número do cluster será zero para todos:
             if it == 1:
                 partition['cluster'].append(0)
-            
+
             # se não, escreve-se um novo cluster no arquivo de saída:
             else:
                 partition['cluster'].append(i)
-        
-        i += 1    
+
+        i += 1
 
     # criando dataframe a partir do docionário - será usado para gerar arquivo de saída final do algoritmo:
     dfPartition = pd.DataFrame(partition)
-    dfPartition.to_csv(targetFolder + file + '_%s_%d.clu' % (dataset.split('/')[-1][0:-4], it-1), sep='\t', index=False) 
+    dfPartition.to_csv(targetFolder + file + '_%s_%d.clu' %
+                       (dataset.split('/')[-1][0:-4], it-1), sep='\t', index=False)
 
 
 def initial_distances_between_objects(df: pd.DataFrame):
     """ Calcula a distância euclidiana entre todos os objetos (individualmente) do conjunto de dados
         args:
         df -- tabela de conjuntos de dados, lida a partir de arquivo
-    
+
     """
     # lista de nomes dos objetos:
     objectsNames = df['sample_label'].tolist()
@@ -339,11 +360,11 @@ def initial_distances_between_objects(df: pd.DataFrame):
             # diagonal principal:
             if index_i == index_j:
                 distance = 0
-            
+
             # demais céulas da tabela:
             else:
                 distance = euclidean_dist(tuple(i[1:]), tuple(j[1:]))
-            
+
             distanceTable[i[0]].append(distance)
 
     return pd.DataFrame(distanceTable, index=objectsNames), listOfObjects
@@ -363,11 +384,12 @@ def euclidean_dist(point1: tuple, point2: tuple):
 
     return math.sqrt(sum)
 
+
 def recalculate_centroid(objs: list):
     """ Recalcula o centróide de um cluster a partir dos objetos que o compõem.
         args:
         objs -- lista de objetos que compõem o cluster. O centróide será a média de cada um de seus atributos.
-    
+
     """
 
     # número de dimensões (coordenadas, atributos) dos objetos na lista:
@@ -389,6 +411,7 @@ def recalculate_centroid(objs: list):
 
     return tuple(sum)   # retornando resultado na forma de tupla
 
+
 def plot_partition(partition: str, dataset: str):
     """ Plota os dados divididos em clusters. Pode receber a partição real ou a partição obtida pelos algoritmos implementados.
         args:
@@ -404,7 +427,7 @@ def plot_partition(partition: str, dataset: str):
 
     # se não, basta ler o arquivo e os nomes das colunas já estarão nele:
     else:
-        partitionDf = pd.read_csv(partition, sep="\t", header=0) 
+        partitionDf = pd.read_csv(partition, sep="\t", header=0)
 
     # lendo objetos de entrada:
     df = pd.read_csv(dataset, sep="\t", header=0)
@@ -416,27 +439,28 @@ def plot_partition(partition: str, dataset: str):
     # eixos e clusters:
     try:
         x = df['d1'].to_numpy().tolist()
-        plt.xlabel('d1') 
-    
+        plt.xlabel('d1')
+
     except KeyError:
         x = df['D1'].to_numpy().tolist()
-        plt.xlabel('D1') 
+        plt.xlabel('D1')
 
     try:
         y = df['d2'].to_numpy().tolist()
-        plt.ylabel('d2') 
-    
+        plt.ylabel('d2')
+
     except:
         y = df['D2'].to_numpy().tolist()
-        plt.ylabel('D2') 
-    
+        plt.ylabel('D2')
+
     clusters = partitionDf['cluster'].to_numpy().tolist()
     scatter = ax.scatter(x, y, c=clusters, s=50)
 
     # definindo o título do gráfico:
     if 'Real' in partition:
-        titleName = 'Base de dados: {}\nClusters: {}'.format(partition.split('/')[2].split('Real')[0], len(set(clusters)))
-    
+        titleName = 'Base de dados: {}\nClusters: {}'.format(
+            partition.split('/')[2].split('Real')[0], len(set(clusters)))
+
     else:
         """formatos: 
                 '../output/single_link/single_<entrada>_<numClusters>.clu'
@@ -446,18 +470,19 @@ def plot_partition(partition: str, dataset: str):
             algoritmo = 'K-Médias'
             dados = partition.split('_')[1][0:-4]
             numClusters = len(set(clusters))
-        
+
         else:
             if 'single' in partition:
                 algoritmo = 'Single-Link'
-        
+
             else:
                 algoritmo = 'Complete-Link'
-            
+
             dados = partition.split('/')[3].split('_')[1]
             numClusters = partition.split('/')[3].split('_')[2][0:-4]
 
-        titleName = '{}\n{} - {} clusters'.format(algoritmo, dados, numClusters)
+        titleName = '{}\n{} - {} clusters'.format(
+            algoritmo, dados, numClusters)
 
     plt.title(titleName)
     plt.show()
