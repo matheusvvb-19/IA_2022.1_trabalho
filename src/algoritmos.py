@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
+from sklearn.metrics.cluster import adjusted_rand_score
 
 
 def k_means(dataset: str, k: int, it: int):
@@ -486,3 +487,21 @@ def plot_partition(partition: str, dataset: str):
 
     plt.title(titleName)
     plt.show()
+
+
+def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
+    dfReal = pd.read_csv(realPartitionPath, sep="\t")
+
+    # Armazena a divisão dos objetos nos cluster da partição real
+    realPartition = []
+    for val in dfReal.to_numpy().tolist():
+        realPartition.append(val[1])
+
+    # Armazena a divisão dos objetos nos cluster da partição que será calculado o IR
+    dfTest = pd.read_csv(testPartitionPath, sep="\t", header=0)
+    testPartition = []
+    for val in dfTest.to_numpy().tolist()[1:]:
+        testPartition.append(val[1])
+
+    # Função que calcula o AR
+    return adjusted_rand_score(realPartition, testPartition)
