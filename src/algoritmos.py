@@ -215,19 +215,24 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
     for it in range(numObjs, k_min-1, -1):
         if it != 1:
             # variável dicionário que armazena a menor distância da tabela de distâncias euclidianas, assim como os nomes dos objetos que compõem essa menor distância:
+            columns = dfDistances.columns.tolist()
+
+            minOfEveryColumnIdx = dfDistances[dfDistances > 0].idxmin()
+            minOfEveryColumnValues = dfDistances[dfDistances > 0].min()
+
             minValue = {
                 'distance': -1,
                 'object1': '',
-                'object2': '',
+                'object2': ''
             }
 
             # encontrando a menor distância na tabela de distâncias:
-            for i in listOfObjects:
-                for j in listOfObjects:
-                    if dfDistances[i[0]][j[0]] > 0 and (minValue['distance'] == -1 or dfDistances[i[0]][j[0]] < minValue['distance']):
-                        minValue['distance'] = dfDistances[i[0]][j[0]]
-                        minValue['object1'] = i[0]
-                        minValue['object2'] = j[0]
+            for i in columns:
+                value = minOfEveryColumnValues[i]
+                if minValue['distance'] == -1 or value < minValue['distance']:
+                    minValue['distance'] = value
+                    minValue['object1'] = i
+                    minValue['object2'] = minOfEveryColumnIdx[i]
 
             # dicionário que armazenará dados da nova coluna e linha a ser adicionada à tabela de distâncias:
             newCluster = {
