@@ -1,4 +1,3 @@
-import typing
 import random
 import math
 import glob
@@ -474,8 +473,9 @@ def plot_partition(partition: str, dataset: str):
         """
         if 'kmeans' in partition:
             algoritmo = 'K-Médias'
-            dados = partition.split('_')[1][0:-4]
-            numClusters = len(set(clusters))
+            dados = partition.split('_')[1]
+            numClusters = partition.split('.clu')[0]
+            numClusters = numClusters.split('_')[-1]
 
         else:
             if 'single' in partition:
@@ -579,7 +579,7 @@ def ar_bar_plot(dataset: str):
 
     ax.set_ylabel('AR')
     ax.set_xlabel('K')
-    ax.set_title('AR - %s' % dataset)
+    ax.set_title('AR: %s' % dataset)
     ax.set_xticks(x, labels)
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
