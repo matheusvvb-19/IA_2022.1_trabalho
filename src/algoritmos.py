@@ -1,6 +1,7 @@
 import typing
 import random
 import math
+import glob
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -159,8 +160,7 @@ def k_means(dataset: str, k: int, it: int):
     dfPartition = pd.DataFrame(partition)
 
     Path(f'../output/').mkdir(parents=True, exist_ok=True)
-    dfPartition.to_csv(f'../output/kmeans_%s.clu' %
-                       dataset.split('/')[-1][0:-4], sep='\t', index=False)
+    dfPartition.to_csv(f'../output/kmeans_%s_%d.clu' % (dataset.split('/')[-1][0:-4], k), sep='\t', index=False)
 
 
 def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
@@ -518,3 +518,75 @@ def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
 
     # Função que calcula o AR
     return adjusted_rand_score(realPartition, testPartition)
+
+def ar_bar_plot(dataset: str):
+    """ Plota um gráfico de barras com os AR's decada algortimo aplicado ao conjunto de dados desejado.
+        args:
+        dataset -- nome do arquivo de entrada que se deseja analisar os AR's.
+    """
+    
+    # caminho para o arquivo que contém a partição real daquele dataset:
+    realPartitionPath = glob.glob('../datasets/*Real*.clu')
+    realPartitionPath = [x for x in realPartitionPath if dataset in x]
+    realPartitionPath = realPartitionPath[0]
+
+    # lista de caminhos para arquivos com as partições geradas para aquele dataset:
+    testPartitionsPath = glob.glob('../output/**/*.clu', recursive=True)
+    testPartitionsPath.sort(key=len)
+    testPartitionsPath = [x for x in testPartitionsPath if dataset in x]
+
+    # lista de caminhos específicos, para cada algoritmo:
+    testKMeansPartitionsPath = [x for x in testPartitionsPath if 'kmeans' in x]
+    testSinglePartitionsPath = [x for x in testPartitionsPath if 'single' in x]
+    testCompletePartitionsPath = [x for x in testPartitionsPath if 'complete' in x]
+    
+    # valores de K (quantidade de partições obtidas):
+    labels = []
+    for p in testPartitionsPath:
+        label = p.split('.clu')[0]
+        label = label.split('_')[-1]
+        label = int(label)
+
+        if label not in labels:
+            labels.append(label)
+    
+    labels = sorted(labels)
+
+    # calculando e armazenando os AR's para algoritmo e cada partição:
+    kmeansARs = []
+    singleLinkARs = []
+    completeLinkARs = []
+    for p in testKMeansPartitionsPath:
+        kmeansARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
+
+    for p in testSinglePartitionsPath:
+        singleLinkARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
+
+    for p in testCompletePartitionsPath:
+        completeLinkARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
+
+    # configurações do gráfico:
+    if dataset == 'monkey':
+        plt.rcParams["figure.figsize"] = (15,8)
+
+    x = np.arange(len(labels))
+    width = 0.20
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(x - width, kmeansARs, width, label='K-Médias')
+    rects2 = ax.bar(x, singleLinkARs, width, label='Single-Link')
+    rects3 = ax.bar(x + width, completeLinkARs, width, label='Complete-Link')
+
+    ax.set_ylabel('AR')
+    ax.set_xlabel('K')
+    ax.set_title('AR - %s' % dataset)
+    ax.set_xticks(x, labels)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    ax.bar_label(rects1, padding=3)
+    ax.bar_label(rects2, padding=3)
+    ax.bar_label(rects3, padding=3)
+
+    fig.tight_layout()
+
+    plt.show()
