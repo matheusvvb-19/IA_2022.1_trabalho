@@ -162,7 +162,7 @@ def k_means(dataset: str, k: int, it: int):
     dfPartition.to_csv(f'../output/kmeans_%s_%d.clu' % (dataset.split('/')[-1][0:-4], k), sep='\t', index=False)
 
 
-def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
+def single_link(dataset: str, k_min: int, k_max: int):
     """ Algoritmo Single-Link
         args:
         dataset -- arquivo contendo o conjunto de dados
@@ -170,6 +170,21 @@ def hierarquic_link(dataset: str, k_min: int, k_max: int, strategy: str):
         k_max -- número final do intervalo do número de clusters
     """
 
+    hierarchic_link(dataset, k_min, k_max, strategy='single-link')
+
+
+def complete_link(dataset: str, k_min: int, k_max: int):
+    """ Algoritmo Complete-Link
+        args:
+        dataset -- arquivo contendo o conjunto de dados
+        k_min -- número inicial do intervalo do número de clusters
+        k_max -- número final do intervalo do número de clusters
+    """
+
+    hierarchic_link(dataset, k_min, k_max, strategy='complete-link')
+
+
+def hierarchic_link(dataset: str, k_min: int, k_max: int, strategy: str):
     if strategy == 'single-link':
         targetFolder = '../output/single_link/'
         file = 'single'
@@ -499,7 +514,7 @@ def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
         args:
         realPartitionPath: caminho para o arquivo que contém a partição real do conjunto de dados, está na pasta datasets;
         testPartitionPath: caminho para o arquivo que contém a partição gerada pelos nossos algoritmos, está na pasta output.
-    
+
     """
 
     # lendo o conjunto de dados de entrada:
@@ -519,12 +534,13 @@ def adjusted_rand_index(realPartitionPath: str, testPartitionPath: str):
     # Função que calcula o AR
     return adjusted_rand_score(realPartition, testPartition)
 
+
 def ar_bar_plot(dataset: str):
     """ Plota um gráfico de barras com os AR's decada algortimo aplicado ao conjunto de dados desejado.
         args:
         dataset -- nome do arquivo de entrada que se deseja analisar os AR's.
     """
-    
+
     # caminho para o arquivo que contém a partição real daquele dataset:
     realPartitionPath = glob.glob('../datasets/*Real*.clu')
     realPartitionPath = [x for x in realPartitionPath if dataset in x]
@@ -539,7 +555,7 @@ def ar_bar_plot(dataset: str):
     testKMeansPartitionsPath = [x for x in testPartitionsPath if 'kmeans' in x]
     testSinglePartitionsPath = [x for x in testPartitionsPath if 'single' in x]
     testCompletePartitionsPath = [x for x in testPartitionsPath if 'complete' in x]
-    
+
     # valores de K (quantidade de partições obtidas):
     labels = []
     for p in testPartitionsPath:
@@ -549,7 +565,7 @@ def ar_bar_plot(dataset: str):
 
         if label not in labels:
             labels.append(label)
-    
+
     labels = sorted(labels)
 
     # calculando e armazenando os AR's para algoritmo e cada partição:
@@ -560,14 +576,16 @@ def ar_bar_plot(dataset: str):
         kmeansARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
 
     for p in testSinglePartitionsPath:
-        singleLinkARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
+        singleLinkARs.append(
+            round(adjusted_rand_index(realPartitionPath, p), 5))
 
     for p in testCompletePartitionsPath:
-        completeLinkARs.append(round(adjusted_rand_index(realPartitionPath, p), 5))
+        completeLinkARs.append(
+            round(adjusted_rand_index(realPartitionPath, p), 5))
 
     # configurações do gráfico:
     if dataset == 'monkey':
-        plt.rcParams["figure.figsize"] = (15,8)
+        plt.rcParams["figure.figsize"] = (15, 8)
 
     x = np.arange(len(labels))
     width = 0.20
@@ -582,7 +600,7 @@ def ar_bar_plot(dataset: str):
     ax.set_title('AR: %s' % dataset)
     ax.set_xticks(x, labels)
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    
+
     ax.bar_label(rects1, padding=3)
     ax.bar_label(rects2, padding=3)
     ax.bar_label(rects3, padding=3)
