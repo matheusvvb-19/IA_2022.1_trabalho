@@ -17,3 +17,10 @@ Primeiramente, tenha uma versão [Python](https://www.python.org/) instalada em 
 1. Clone o repositório;
 2. Abra um terminal na pasta raiz do projeto e execute o comando ```pip install -r requirements.txt```;
 3. Execute as células de código presentes no arquivo ```agrupamentos.ipynb ```.
+
+## Integrantes
+Grupo 10<br>
+Arthur Felipe Bravo Pita RA 770987<br>
+Matheus Vargas Volpon Berto RA 771051<br>
+Pedro Henrique Mendes RA 771056<br>
+Wilson Leonardo Marcielo Chaves RA 771068
