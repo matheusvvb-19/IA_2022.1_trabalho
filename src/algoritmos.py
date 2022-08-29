@@ -1,3 +1,10 @@
+# Trabalho de Inteligência Artificial 2022.1
+# Grupo 10 - Integrantes:
+# Arthur Felipe Bravo Pita            RA 770987
+# Matheus Vargas Volpon Berto         RA 771051
+# Pedro Henrique Mendes               RA 771056
+# Wilson Leonardo Marcielo Chaves     RA 771068
+
 import random
 import math
 import glob
